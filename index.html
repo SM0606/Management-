@@ -6,13 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json" />
+  <link rel="manifest" href="manifest.json?v=v2" />
   <meta name="theme-color" content="#1976d2" />
 
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=v2" />
 </head>
 <body>
   <h1>Nixer Management</h1>
+
   <div class="container">
     <!-- DASHBOARD SUMMARY -->
     <div class="dashboard">
@@ -40,30 +41,37 @@
         Client Name
         <input type="text" id="clientName" required />
       </label>
+
       <label>
         Contact (phone/email)
         <input type="text" id="contact" />
       </label>
+
       <label>
         Nixer Model
         <input type="text" id="mixerModel" />
       </label>
+
       <label>
         Reg / Plate
         <input type="text" id="reg" />
       </label>
+
       <label>
         Parts Price (€)
         <input type="number" step="0.01" id="partsPrice" />
       </label>
+
       <label>
         Total Price (€)
         <input type="number" step="0.01" id="price" />
       </label>
+
       <label>
         Date
         <input type="date" id="date" />
       </label>
+
       <label>
         Status / Category
         <select id="status">
@@ -102,6 +110,7 @@
           <option value="client">Client name</option>
           <option value="price">Total price</option>
         </select>
+
         <button
           type="button"
           id="sortDirBtn"
@@ -112,9 +121,13 @@
       </div>
 
       <div class="right-actions">
-        <!-- Install App button (hidden until installable) -->
         <button id="installBtn" class="btn btn-primary" type="button" style="display:none;">
           Install App
+        </button>
+
+        <!-- ✅ Hard refresh button -->
+        <button id="hardRefreshBtn" class="btn btn-outline" type="button" title="Force reload latest version">
+          Refresh App
         </button>
 
         <button id="themeToggle" type="button" class="btn btn-outline">Dark mode</button>
@@ -150,14 +163,12 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody id="recordsBody">
-          <!-- rows injected by JS -->
-        </tbody>
+        <tbody id="recordsBody"></tbody>
       </table>
     </div>
   </div>
 
-  <!-- ✅ UPDATE BANNER (must be OUTSIDE the script) -->
+  <!-- ✅ Update banner -->
   <div id="updateBanner" class="update-banner" style="display:none;">
     <div class="update-banner__inner">
       <div class="update-banner__text">
@@ -174,67 +185,72 @@
     const STORAGE_KEY = "mixer_records_v1";
     const THEME_KEY = "mixer_theme_v1";
 
-    const form = document.getElementById("mixerForm");
-    const clientNameInput = document.getElementById("clientName");
-    const contactInput = document.getElementById("contact");
-    const mixerModelInput = document.getElementById("mixerModel");
-    const regInput = document.getElementById("reg");
-    const partsPriceInput = document.getElementById("partsPrice");
-    const priceInput = document.getElementById("price");
-    const dateInput = document.getElementById("date");
-    const statusInput = document.getElementById("status");
-    const notesInput = document.getElementById("notes");
-    const workNeededInput = document.getElementById("workNeeded");
+    const $ = (id) => document.getElementById(id);
 
-    const recordsBody = document.getElementById("recordsBody");
-    const searchInput = document.getElementById("searchInput");
-    const clearAllBtn = document.getElementById("clearAllBtn");
-    const addBtn = document.getElementById("addBtn");
-    const sortBySelect = document.getElementById("sortBy");
-    const sortDirBtn = document.getElementById("sortDirBtn");
-    const themeToggleBtn = document.getElementById("themeToggle");
-    const downloadBtn = document.getElementById("downloadBtn");
-    const installBtn = document.getElementById("installBtn");
+    // Form inputs
+    const form = $("mixerForm");
+    const clientNameInput = $("clientName");
+    const contactInput = $("contact");
+    const mixerModelInput = $("mixerModel");
+    const regInput = $("reg");
+    const partsPriceInput = $("partsPrice");
+    const priceInput = $("price");
+    const dateInput = $("date");
+    const statusInput = $("status");
+    const workNeededInput = $("workNeeded");
+    const notesInput = $("notes");
+
+    // UI elements
+    const recordsBody = $("recordsBody");
+    const searchInput = $("searchInput");
+    const clearAllBtn = $("clearAllBtn");
+    const addBtn = $("addBtn");
+    const sortBySelect = $("sortBy");
+    const sortDirBtn = $("sortDirBtn");
+    const themeToggleBtn = $("themeToggle");
+    const downloadBtn = $("downloadBtn");
+    const installBtn = $("installBtn");
+    const hardRefreshBtn = $("hardRefreshBtn");
 
     // Update banner elements
-    const updateBanner = document.getElementById("updateBanner");
-    const refreshAppBtn = document.getElementById("refreshAppBtn");
-    const dismissUpdateBtn = document.getElementById("dismissUpdateBtn");
+    const updateBanner = $("updateBanner");
+    const refreshAppBtn = $("refreshAppBtn");
+    const dismissUpdateBtn = $("dismissUpdateBtn");
 
     // Dashboard elements
-    const totalJobsEl = document.getElementById("totalJobs");
-    const totalProfitEl = document.getElementById("totalProfit");
-    const jobsThisMonthEl = document.getElementById("jobsThisMonth");
-    const pendingJobsEl = document.getElementById("pendingJobs");
+    const totalJobsEl = $("totalJobs");
+    const totalProfitEl = $("totalProfit");
+    const jobsThisMonthEl = $("jobsThisMonth");
+    const pendingJobsEl = $("pendingJobs");
 
+    // State
     let records = [];
     let editIndex = null;
     let sortBy = "date";
     let sortDir = "desc";
     let deferredPrompt = null;
-
-    // For SW update prompt
     let newWorker = null;
 
     function showUpdateBanner(worker) {
       newWorker = worker;
-      updateBanner.style.display = "block";
+      if (updateBanner) updateBanner.style.display = "block";
     }
-
     function hideUpdateBanner() {
-      updateBanner.style.display = "none";
+      if (updateBanner) updateBanner.style.display = "none";
     }
 
-    // -------- STORAGE --------
+    // Storage
     function loadRecords() {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      records = saved ? JSON.parse(saved) : [];
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        records = saved ? JSON.parse(saved) : [];
+      } catch {
+        records = [];
+      }
     }
-
     function saveRecords() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
     }
-
     function clearForm() {
       form.reset();
       editIndex = null;
@@ -243,7 +259,7 @@
       addBtn.classList.remove("btn-editing");
     }
 
-    // -------- SORTING --------
+    // Sorting
     function compareValues(a, b, field) {
       if (field === "client") {
         const x = (a.clientName || "").toLowerCase();
@@ -252,25 +268,20 @@
         if (x > y) return 1;
         return 0;
       }
-
       if (field === "price") {
-        const x = parseFloat(a.price) || 0;
-        const y = parseFloat(b.price) || 0;
-        return x - y;
+        return (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0);
       }
-
       const x = a.date ? new Date(a.date).getTime() : 0;
       const y = b.date ? new Date(b.date).getTime() : 0;
       return x - y;
     }
 
-    // -------- DASHBOARD --------
+    // Dashboard
     function renderDashboard() {
       const now = new Date();
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
 
-      let totalJobs = records.length;
       let totalProfit = 0;
       let jobsThisMonth = 0;
       let pendingJobs = 0;
@@ -287,24 +298,23 @@
           }
         }
 
-        const status = (r.status || "Pending");
-        if (status === "Pending" || status === "In Progress") {
-          pendingJobs++;
-        }
+        const st = r.status || "Pending";
+        if (st === "Pending" || st === "In Progress") pendingJobs++;
       });
 
-      totalJobsEl.textContent = totalJobs;
+      totalJobsEl.textContent = String(records.length);
       totalProfitEl.textContent = totalProfit.toFixed(2);
-      jobsThisMonthEl.textContent = jobsThisMonth;
-      pendingJobsEl.textContent = pendingJobs;
+      jobsThisMonthEl.textContent = String(jobsThisMonth);
+      pendingJobsEl.textContent = String(pendingJobs);
     }
 
-    // -------- TABLE RENDER --------
+    // Table
     function renderTable() {
       const filter = searchInput.value.trim().toLowerCase();
       recordsBody.innerHTML = "";
 
-      let data = records.map((record, index) => ({ ...record, index }));
+      const now = new Date();
+      const data = records.map((r, index) => ({ ...r, index }));
 
       data.sort((a, b) => {
         let result = compareValues(a, b, sortBy);
@@ -330,6 +340,22 @@
           const partsNum = parseFloat(r.partsPrice) || 0;
           const profitNum = totalNum - partsNum;
 
+          // Row colouring
+          const rowClasses = [];
+          if (r.date) {
+            const d = new Date(r.date);
+            if (!isNaN(d.getTime())) {
+              const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+              if (diffDays <= 7) rowClasses.push("row-recent");
+              else if (diffDays >= 365) rowClasses.push("row-old");
+            }
+          }
+          if (totalNum >= 500) rowClasses.push("row-high-value");
+          const st = r.status || "Pending";
+          if (st === "Completed" || st === "Paid") rowClasses.push("row-completed");
+
+          tr.className = rowClasses.join(" ");
+
           tr.innerHTML = `
             <td>${r.clientName || ""}</td>
             <td>${r.contact || ""}</td>
@@ -354,7 +380,7 @@
       renderDashboard();
     }
 
-    // -------- FORM SUBMIT --------
+    // Form submit
     form.addEventListener("submit", (e) => {
       e.preventDefault();
 
@@ -365,7 +391,7 @@
         reg: regInput.value.trim(),
         partsPrice: partsPriceInput.value ? parseFloat(partsPriceInput.value).toFixed(2) : "",
         price: priceInput.value ? parseFloat(priceInput.value).toFixed(2) : "",
-        date: dateInput.value,
+        date: dateInput.value || "",
         status: statusInput.value || "Pending",
         workNeeded: workNeededInput.value.trim(),
         notes: notesInput.value.trim(),
@@ -384,10 +410,10 @@
       clearForm();
     });
 
-    // -------- TABLE BUTTONS (EDIT / DELETE) --------
+    // Table buttons
     recordsBody.addEventListener("click", (e) => {
       const btn = e.target;
-      if (btn.tagName !== "BUTTON") return;
+      if (!btn || btn.tagName !== "BUTTON") return;
 
       const index = parseInt(btn.dataset.index, 10);
       const action = btn.dataset.action;
@@ -400,6 +426,7 @@
         }
       } else if (action === "edit") {
         const r = records[index];
+
         clientNameInput.value = r.clientName || "";
         contactInput.value = r.contact || "";
         mixerModelInput.value = r.mixerModel || "";
@@ -418,10 +445,10 @@
       }
     });
 
-    // -------- SEARCH --------
+    // Search
     searchInput.addEventListener("input", renderTable);
 
-    // -------- CLEAR ALL --------
+    // Clear all
     clearAllBtn.addEventListener("click", () => {
       if (confirm("This will delete ALL records on this device. Continue?")) {
         records = [];
@@ -430,7 +457,7 @@
       }
     });
 
-    // -------- SORT CONTROLS --------
+    // Sort
     sortBySelect.addEventListener("change", () => {
       sortBy = sortBySelect.value;
       renderTable();
@@ -442,7 +469,7 @@
       renderTable();
     });
 
-    // -------- THEME --------
+    // Theme
     function applyTheme(theme) {
       if (theme === "dark") {
         document.body.classList.add("dark-mode");
@@ -461,26 +488,25 @@
       applyTheme(newTheme);
     });
 
-    // -------- DOWNLOAD CSV --------
+    // CSV
     downloadBtn.addEventListener("click", () => {
       if (!records.length) {
         alert("No records to download.");
         return;
       }
 
-      const csvRows = [];
-      const header = [
+      const rows = [];
+      rows.push([
         "Client","Contact","Nixer Model","Reg","Status","Date",
         "Parts Price (€)","Total Price (€)","Profit (€)","Notes","Work Needed"
-      ];
-      csvRows.push(header.join(","));
+      ].join(","));
 
       records.forEach((r) => {
         const totalNum = parseFloat(r.price) || 0;
         const partsNum = parseFloat(r.partsPrice) || 0;
         const profit = totalNum - partsNum;
 
-        csvRows.push([
+        rows.push([
           r.clientName || "",
           r.contact || "",
           r.mixerModel || "",
@@ -495,18 +521,16 @@
         ].join(","));
       });
 
-      const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+      const blob = new Blob([rows.join("\n")], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
-
       const a = document.createElement("a");
       a.href = url;
       a.download = "nixer-records.csv";
       a.click();
-
       URL.revokeObjectURL(url);
     });
 
-    // -------- INSTALL BUTTON (PWA) --------
+    // Install (Android/Chrome)
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault();
       deferredPrompt = e;
@@ -521,18 +545,40 @@
       deferredPrompt = null;
     });
 
-    // -------- INIT --------
+    // ✅ Hard refresh (best for iPhone caching)
+    hardRefreshBtn.addEventListener("click", async () => {
+      // best effort: tell SW to check for updates
+      try {
+        if ("serviceWorker" in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) await reg.update();
+        }
+      } catch {}
+
+      // best effort: clear caches
+      try {
+        if ("caches" in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+      } catch {}
+
+      // cache-bust URL
+      const url = new URL(window.location.href);
+      url.searchParams.set("t", String(Date.now()));
+      window.location.replace(url.toString());
+    });
+
+    // Init
     loadRecords();
     renderTable();
 
-    // -------- SERVICE WORKER REGISTER + UPDATE PROMPT --------
+    // Service Worker + Update Banner
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", async () => {
         try {
-          // match your SW version/cache version
           const reg = await navigator.serviceWorker.register("./sw.js?v=v2");
 
-          // if update already waiting
           if (reg.waiting) showUpdateBanner(reg.waiting);
 
           reg.addEventListener("updatefound", () => {
@@ -546,7 +592,6 @@
             });
           });
 
-          // refresh when new SW takes control
           let refreshing = false;
           navigator.serviceWorker.addEventListener("controllerchange", () => {
             if (refreshing) return;
@@ -554,7 +599,6 @@
             window.location.reload();
           });
 
-          // banner buttons
           refreshAppBtn.addEventListener("click", () => {
             if (!newWorker) return;
             newWorker.postMessage({ type: "SKIP_WAITING" });
