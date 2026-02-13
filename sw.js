@@ -1,45 +1,32 @@
-const CACHE_NAME = "mixer-cache-v1";
+const CACHE_NAME = "nixer-cache-v2"; // <-- bump this on each release
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
   "./style.css",
   "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icons-192.png",
+  "./icons/icons-512.png"
 ];
 
-// Install: cache core files
 self.addEventListener("install", (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
 });
 
-// Activate: clean old caches
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })()
   );
 });
 
-// Fetch: cache-first, then network
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return (
-        cachedResponse ||
-        fetch(event.request).catch(() =>
-          caches.match("./index.html")
-        )
-      );
-    })
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });
