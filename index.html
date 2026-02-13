@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Nixers Management</title>
+  <title>Nixer Management</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- PWA -->
@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Nixers Management</h1>
+  <h1>Nixer Management</h1>
   <div class="container">
     <!-- DASHBOARD SUMMARY -->
     <div class="dashboard">
@@ -41,11 +41,11 @@
         <input type="text" id="clientName" required />
       </label>
       <label>
-        Contact
+        Contact (phone/email)
         <input type="text" id="contact" />
       </label>
       <label>
-        Car Model
+        Nixer Model
         <input type="text" id="mixerModel" />
       </label>
       <label>
@@ -74,6 +74,12 @@
           <option value="Paid">Paid</option>
         </select>
       </label>
+
+      <label class="full-width">
+        Work Needed
+        <textarea id="workNeeded"></textarea>
+      </label>
+
       <label class="full-width">
         Notes / Work done
         <textarea id="notes"></textarea>
@@ -140,6 +146,7 @@
             <th>Total (€)</th>
             <th>Profit (€)</th>
             <th>Notes</th>
+            <th>Work Needed</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -164,6 +171,7 @@
     const dateInput = document.getElementById("date");
     const statusInput = document.getElementById("status");
     const notesInput = document.getElementById("notes");
+    const workNeededInput = document.getElementById("workNeeded");
 
     const recordsBody = document.getElementById("recordsBody");
     const searchInput = document.getElementById("searchInput");
@@ -336,6 +344,7 @@
             <td>${r.price || ""}</td>
             <td>${isNaN(profitNum) ? "" : profitNum.toFixed(2)}</td>
             <td>${r.notes || ""}</td>
+            <td>${r.workNeeded || ""}</td>
             <td class="actions-cell">
               <button class="btn btn-small btn-outline" data-action="edit" data-index="${r.index}">Edit</button>
               <button class="btn btn-small btn-danger-outline" data-action="delete" data-index="${r.index}">Delete</button>
@@ -366,6 +375,7 @@
           : "",
         date: dateInput.value,
         status: statusInput.value || "Pending",
+        workNeeded: workNeededInput.value.trim(),
         notes: notesInput.value.trim(),
       };
 
@@ -409,6 +419,7 @@
         priceInput.value = r.price || "";
         dateInput.value = r.date || "";
         statusInput.value = r.status || "Pending";
+        workNeededInput.value = r.workNeeded || "";
         notesInput.value = r.notes || "";
 
         editIndex = index;
@@ -440,11 +451,7 @@
 
     sortDirBtn.addEventListener("click", () => {
       sortDir = sortDir === "asc" ? "desc" : "asc";
-      if (sortDir === "asc") {
-        sortDirBtn.textContent = "↑ Oldest / Lowest";
-      } else {
-        sortDirBtn.textContent = "↓ Newest / Highest";
-      }
+      sortDirBtn.textContent = sortDir === "asc" ? "↑ Oldest / Lowest" : "↓ Newest / Highest";
       renderTable();
     });
 
@@ -486,7 +493,8 @@
         "Parts Price (€)",
         "Total Price (€)",
         "Profit (€)",
-        "Notes"
+        "Notes",
+        "Work Needed"
       ];
       csvRows.push(header.join(","));
 
@@ -505,7 +513,8 @@
           r.partsPrice || "",
           r.price || "",
           profit.toFixed(2),
-          (r.notes || "").replace(/,/g, ";")
+          (r.notes || "").replace(/,/g, ";"),
+          (r.workNeeded || "").replace(/,/g, ";")
         ];
 
         csvRows.push(row.join(","));
@@ -525,11 +534,8 @@
 
     // -------- INSTALL BUTTON (PWA) --------
     window.addEventListener("beforeinstallprompt", (e) => {
-      // Prevent the mini-infobar or default prompt
       e.preventDefault();
       deferredPrompt = e;
-
-      // Show our custom Install button
       installBtn.style.display = "inline-flex";
     });
 
@@ -538,11 +544,8 @@
         alert("Install option is not available yet. Try visiting this page from a browser first.");
         return;
       }
-
       deferredPrompt.prompt();
-      const outcome = await deferredPrompt.userChoice;
-
-      // You could log outcome.outcome === 'accepted' / 'dismissed' if you want
+      await deferredPrompt.userChoice;
       installBtn.style.display = "none";
       deferredPrompt = null;
     });
@@ -564,5 +567,3 @@
   </script>
 </body>
 </html>
-
-
